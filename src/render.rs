@@ -2,15 +2,19 @@ use std::iter::once;
 
 use bytemuck::{cast_slice, Pod, Zeroable};
 use wgpu::{
+    include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType,
-    BufferBindingType, BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor,
-    Extent3d, Features, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor, Limits,
-    LoadOp, Operations, Origin3d, PowerPreference, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
-    SurfaceError, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
+    BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites,
+    CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Features, FragmentState,
+    FrontFace, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor, Limits, LoadOp,
+    MultisampleState, Operations, Origin3d, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
+    PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface,
+    SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
+    VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -21,6 +25,7 @@ pub(crate) struct RenderState {
     surface_config: SurfaceConfiguration,
     device: Device,
     queue: Queue,
+    render_pipeline: RenderPipeline,
     pub(crate) window: Window,
 
     fg_texture: Texture,
@@ -208,11 +213,53 @@ impl RenderState {
 
         let font_char_size = (font.char_width, font.char_height);
 
+        let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
+        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: Some("Render pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[],
+            },
+            fragment: Some(FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(ColorTargetState {
+                    format: surface_format,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleStrip,
+                strip_index_format: None,
+                front_face: FrontFace::Cw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
         Ok(Self {
             surface,
             surface_config,
             device,
             queue,
+            render_pipeline,
             window,
             fg_texture,
             bg_texture,
