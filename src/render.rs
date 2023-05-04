@@ -139,44 +139,14 @@ impl RenderState {
                     },
                 ],
             });
-        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture Bind Group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(
-                        &fg_texture
-                            .texture
-                            .create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::TextureView(
-                        &bg_texture
-                            .texture
-                            .create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: BindingResource::TextureView(
-                        &chars_texture
-                            .texture
-                            .create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 3,
-                    resource: BindingResource::TextureView(
-                        &font_texture
-                            .texture
-                            .create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-            ],
-        });
+        let texture_bind_group = create_texture_bind_group(
+            &device,
+            &texture_bind_group_layout,
+            &fg_texture,
+            &bg_texture,
+            &chars_texture,
+            &font_texture,
+        );
 
         let uniforms = RenderUniforms {
             font_width: font.char_width,
@@ -327,6 +297,55 @@ impl RenderState {
             &self.chars_texture.storage,
         )
     }
+}
+
+fn create_texture_bind_group(
+    device: &Device,
+    texture_bind_group_layout: &BindGroupLayout,
+    fg_texture: &Texture,
+    bg_texture: &Texture,
+    chars_texture: &Texture,
+    font_texture: &Texture,
+) -> BindGroup {
+    let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        label: Some("Texture Bind Group"),
+        layout: texture_bind_group_layout,
+        entries: &[
+            BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::TextureView(
+                    &fg_texture
+                        .texture
+                        .create_view(&TextureViewDescriptor::default()),
+                ),
+            },
+            BindGroupEntry {
+                binding: 1,
+                resource: BindingResource::TextureView(
+                    &bg_texture
+                        .texture
+                        .create_view(&TextureViewDescriptor::default()),
+                ),
+            },
+            BindGroupEntry {
+                binding: 2,
+                resource: BindingResource::TextureView(
+                    &chars_texture
+                        .texture
+                        .create_view(&TextureViewDescriptor::default()),
+                ),
+            },
+            BindGroupEntry {
+                binding: 3,
+                resource: BindingResource::TextureView(
+                    &font_texture
+                        .texture
+                        .create_view(&TextureViewDescriptor::default()),
+                ),
+            },
+        ],
+    });
+    texture_bind_group
 }
 
 struct Texture {
