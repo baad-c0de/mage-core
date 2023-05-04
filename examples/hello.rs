@@ -1,4 +1,4 @@
-use mage::run;
+use mage::{run, App};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -15,5 +15,26 @@ async fn main() {
         .init();
 
     info!("Starting...");
-    let _ = run().await;
+
+    let app = HelloApp::new();
+
+    let _ = run(app).await;
+}
+
+struct HelloApp {}
+
+impl HelloApp {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+impl App for HelloApp {
+    fn tick(&mut self, tick_input: mage::TickInput) -> mage::TickResult {
+        mage::TickResult::Continue
+    }
+
+    fn present(&mut self, present_input: mage::PresentInput) -> mage::PresentResult {
+        mage::PresentResult::Changed
+    }
 }
