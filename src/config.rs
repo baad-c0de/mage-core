@@ -70,7 +70,11 @@ pub fn load_font_image(data: &[u8]) -> Result<FontData, MageError> {
     let data_u32: &[u32] = cast_slice(font_data);
     let char_width = dimensions.0 / 16;
     let char_height = dimensions.1 / 16;
-    if char_width == 0 || char_height == 0 {
+    if char_width == 0
+        || char_height == 0
+        || char_width * 16 != dimensions.0
+        || char_height * 16 != dimensions.1
+    {
         return Err(MageError::InvalidFontImage);
     }
 

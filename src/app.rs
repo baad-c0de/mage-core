@@ -1,7 +1,5 @@
 use std::time::Duration;
 
-use winit::event::VirtualKeyCode;
-
 /// The [`App`] trait is the main interface for the game. It is called by the
 /// framework to update the game state and render the game.
 ///
@@ -134,57 +132,6 @@ pub struct TickInput {
 
     /// The height of the window in characters.
     pub height: u32,
-
-    /// The current state of the keyboard.
-    pub key: KeyState,
-
-    /// The current state of the mouse.
-    pub mouse: Option<MouseState>,
-}
-
-/// Represents the current state of the keyboard.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct KeyState {
-    /// Indicates whether the SHIFT key is currently pressed.
-    pub shift: bool,
-
-    /// Indicates whether the CTRL key is currently pressed.
-    pub ctrl: bool,
-
-    /// Indicates whether the ALT key is currently pressed.
-    pub alt: bool,
-
-    /// If a key is pressed, this is the virtual key code of the key.
-    pub vkey: Option<VirtualKeyCode>,
-
-    /// If a key is pressed, and the virtual key code can be mapped, this is the
-    /// ASCII code of the key.
-    pub code: Option<char>,
-}
-
-/// Represents the current state of the mouse.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct MouseState {
-    /// Indicates whether the mouse is currently over the window.
-    pub on_window: bool,
-
-    /// Indicates whether the primary mouse button (usually the left mouse
-    /// button) is currently pressed.
-    pub primary_pressed: bool,
-
-    /// Indicates whether the secondary mouse button (usually the right mouse
-    /// button) is currently pressed.
-    pub secondary_pressed: bool,
-
-    /// The current X position of the mouse in characters.
-    ///
-    /// The origin is the top-left corner of the window.  Negative values are
-    /// possible if the mouse is outside the window (to the left).
-    pub x: i32,
-
-    /// The current Y position of the mouse in characters.  Negative values are
-    /// possible if the mouse is outside the window (above).
-    pub y: i32,
 }
 
 /// The [`PresentInput`] struct is passed to the [`present`] method of the

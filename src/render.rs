@@ -1,29 +1,40 @@
 use std::iter::once;
 
+use bytemuck::{cast_slice, Pod, Zeroable};
 use wgpu::{
-    Backends, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, Instance,
-    InstanceDescriptor, Limits, LoadOp, Operations, PowerPreference, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, Surface,
-    SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor,
+    util::{BufferInitDescriptor, DeviceExt},
+    Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType,
+    BufferBindingType, BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor,
+    Extent3d, Features, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor, Limits,
+    LoadOp, Operations, Origin3d, PowerPreference, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
+    SurfaceError, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat,
+    TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::error::MageError;
+use crate::{error::MageError, FontData};
 
 pub(crate) struct RenderState {
-    pub surface: Surface,
-    pub surface_config: SurfaceConfiguration,
-    pub device: Device,
-    pub queue: Queue,
-    pub window: Window,
+    surface: Surface,
+    surface_config: SurfaceConfiguration,
+    device: Device,
+    queue: Queue,
+    pub(crate) window: Window,
 
-    pub fore_image: Vec<u32>,
-    pub back_image: Vec<u32>,
-    pub text_image: Vec<u32>,
+    fg_texture: Texture,
+    bg_texture: Texture,
+    chars_texture: Texture,
+    font_texture: Texture,
+    texture_bind_group_layout: BindGroupLayout,
+    texture_bind_group: BindGroup,
+    uniform_bind_group: BindGroup,
+    font_char_size: (u32, u32),
 }
 
 impl RenderState {
-    pub(crate) async fn new(window: Window) -> Result<Self, MageError> {
+    pub(crate) async fn new(window: Window, font: FontData) -> Result<Self, MageError> {
         let window_size = window.inner_size();
 
         let instance = Instance::new(InstanceDescriptor {
@@ -71,9 +82,131 @@ impl RenderState {
         };
         surface.configure(&device, &surface_config);
 
-        let fore_image = Vec::new();
-        let back_image = Vec::new();
-        let text_image = Vec::new();
+        let font_size = (16 * font.char_width, 16 * font.char_height);
+        let fg_texture = Texture::new(&device, font_size);
+        let bg_texture = Texture::new(&device, font_size);
+        let chars_texture = Texture::new(&device, font_size);
+        let font_texture = Texture::new(&device, (16 * font.char_width, 16 * font.char_height));
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Texture Bind Group Layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture Bind Group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(
+                        &fg_texture
+                            .texture
+                            .create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::TextureView(
+                        &bg_texture
+                            .texture
+                            .create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: BindingResource::TextureView(
+                        &chars_texture
+                            .texture
+                            .create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: BindingResource::TextureView(
+                        &font_texture
+                            .texture
+                            .create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+            ],
+        });
+
+        let uniforms = RenderUniforms {
+            font_width: font.char_width,
+            font_height: font.char_height,
+            _padding: [0; 2],
+        };
+        let uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Uniform Buffer for Render"),
+            contents: cast_slice(&[uniforms]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Uniforms bind group layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Uniforms bind group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        let font_char_size = (font.char_width, font.char_height);
 
         Ok(Self {
             surface,
@@ -81,9 +214,14 @@ impl RenderState {
             device,
             queue,
             window,
-            fore_image,
-            back_image,
-            text_image,
+            fg_texture,
+            bg_texture,
+            chars_texture,
+            font_texture,
+            texture_bind_group_layout,
+            texture_bind_group,
+            uniform_bind_group,
+            font_char_size,
         })
     }
 
@@ -136,6 +274,87 @@ impl RenderState {
     }
 
     pub(crate) fn images(&self) -> (&Vec<u32>, &Vec<u32>, &Vec<u32>) {
-        (&self.fore_image, &self.back_image, &self.text_image)
+        (
+            &self.fg_texture.storage,
+            &self.bg_texture.storage,
+            &self.chars_texture.storage,
+        )
     }
+}
+
+struct Texture {
+    /// Size of the texture in pixels.
+    pub(crate) size: (u32, u32),
+
+    /// The texture itself.
+    pub(crate) storage: Vec<u32>,
+
+    /// The WGPU texture object.
+    texture: wgpu::Texture,
+}
+
+impl Texture {
+    fn new(device: &Device, size: (u32, u32)) -> Self {
+        let vec_size = (size.0 * size.1) as usize;
+        let storage = vec![0; vec_size];
+
+        let texture_size = Extent3d {
+            width: size.0,
+            height: size.1,
+            depth_or_array_layers: 1,
+        };
+
+        let texture = device.create_texture(&TextureDescriptor {
+            label: None,
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8Unorm,
+            usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+
+        Self {
+            size,
+            storage,
+            texture,
+        }
+    }
+
+    fn update(&mut self, queue: &Queue) {
+        let (width, height) = self.size;
+        queue.write_texture(
+            ImageCopyTexture {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            cast_slice(&self.storage),
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(width * 4),
+                rows_per_image: Some(height),
+            },
+            Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct RenderUniforms {
+    /// The width of a single character in pixels.
+    font_width: u32,
+
+    /// The height of a single character in pixels.
+    font_height: u32,
+
+    /// Some padding.
+    _padding: [u32; 2],
 }

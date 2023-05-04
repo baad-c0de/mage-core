@@ -66,15 +66,7 @@ where
         ))
         .build(&event_loop)?;
 
-    let mut render_state = RenderState::new(window).await?;
-
-    let mut key_state = KeyState {
-        shift: false,
-        ctrl: false,
-        alt: false,
-        vkey: None,
-        code: None,
-    };
+    let mut render_state = RenderState::new(window, font_data).await?;
 
     //
     // Run the game loop
@@ -127,10 +119,9 @@ where
                 }
             }
             Event::MainEventsCleared => {
-                if tick(&mut app, &mut render_state, &key_state) == TickResult::Quit {
+                if tick(&mut app, &mut render_state) == TickResult::Quit {
                     *control_flow = ControlFlow::Exit;
                 }
-                key_state.vkey = None;
                 render_state.window.request_redraw();
             }
             _ => (),
@@ -138,7 +129,7 @@ where
     });
 }
 
-fn tick<A>(app: &mut A, state: &mut RenderState, key_state: &KeyState) -> TickResult
+fn tick<A>(app: &mut A, state: &mut RenderState) -> TickResult
 where
     A: App,
 {
@@ -147,8 +138,6 @@ where
         dt: Duration::ZERO,
         width,
         height,
-        key: *key_state,
-        mouse: None,
     };
     app.tick(tick_input)
 }
