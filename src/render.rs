@@ -21,21 +21,50 @@ use winit::{dpi::PhysicalSize, window::Window};
 use crate::{error::MageError, FontData};
 
 pub(crate) struct RenderState {
+    /// The surface that we'll render to.
     surface: Surface,
+
+    /// Various configuration options for the surface.
     surface_config: SurfaceConfiguration,
+
+    /// The GPU device that will create and manage our resources.
     device: Device,
+
+    /// The queue that we'll submit render commands to.
     queue: Queue,
+
+    /// The render pipeline for drawing the game.
     render_pipeline: RenderPipeline,
+
+    /// The window that we'll draw to.
     pub(crate) window: Window,
 
+    /// The texture that contains the foreground color data.
     fg_texture: Texture,
+
+    /// The texture that contains the background color data.
     bg_texture: Texture,
+
+    /// The texture that contains the character data.
     chars_texture: Texture,
+
+    /// The texture that contains the font data.
     font_texture: Texture,
+
+    /// The bind group layout for the textures.
     texture_bind_group_layout: BindGroupLayout,
+
+    // The bind group for the textures.
     texture_bind_group: BindGroup,
+
+    /// The bind group for the uniform data.
     uniform_bind_group: BindGroup,
+
+    /// The size of each character in the font texture.
     font_char_size: (u32, u32),
+
+    /// The size of the surface in characters.
+    surface_char_size: (u32, u32),
 }
 
 impl RenderState {
@@ -182,6 +211,10 @@ impl RenderState {
         });
 
         let font_char_size = (font.char_width, font.char_height);
+        let surface_char_size = (
+            window_size.width / font.char_width,
+            window_size.height / font.char_height,
+        );
 
         let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -239,6 +272,7 @@ impl RenderState {
             texture_bind_group,
             uniform_bind_group,
             font_char_size,
+            surface_char_size,
         })
     }
 
@@ -247,6 +281,27 @@ impl RenderState {
             self.surface_config.width = new_size.width;
             self.surface_config.height = new_size.height;
             self.surface.configure(&self.device, &self.surface_config);
+
+            let chars_size = (
+                new_size.width / self.font_char_size.0,
+                new_size.height / self.font_char_size.1,
+            );
+
+            if chars_size != self.surface_char_size {
+                self.font_char_size = chars_size;
+                self.fg_texture = Texture::new(&self.device, chars_size);
+                self.bg_texture = Texture::new(&self.device, chars_size);
+                self.chars_texture = Texture::new(&self.device, chars_size);
+
+                self.texture_bind_group = create_texture_bind_group(
+                    &self.device,
+                    &self.texture_bind_group_layout,
+                    &self.fg_texture,
+                    &self.bg_texture,
+                    &self.chars_texture,
+                    &self.font_texture,
+                );
+            }
         }
     }
 
