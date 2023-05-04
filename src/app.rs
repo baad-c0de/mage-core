@@ -33,13 +33,15 @@ use winit::event::VirtualKeyCode;
 /// one for each character.
 ///
 /// For the foreground and background colors, each 32-bit RGBA value represents
-/// a single character. The first 8 bits are the red value, the next 8 bits are
-/// the green value, the next 8 bits are the blue value, and the last 8 bits are
-/// the alpha value. The alpha value is currently unused.
+/// a single character.  The least significant 8 bits are the red value, the
+/// next 8 bits are the green value, the next 8 bits are the blue value, and the
+/// most significant 8 bits are the alpha value. The alpha value is unused by
+/// the engine but is available for use by the game.
 ///
 /// For the character buffer, each 32-bit RGBA value represents a single
-/// character. The first 8 bits are the ASCII value of the character, and the
-/// next 24 bits are unused by the engine but are available for use by the game.
+/// character.  The least significant 8 bits are the character value, the most
+/// significant 24 bits are unused by the engine but are available for use by
+/// the game.
 ///
 /// It returns a [`PresentResult`] to indicate whether the screen has changed
 /// since the last frame.
@@ -196,22 +198,22 @@ pub struct PresentInput<'textures> {
     pub height: u32,
 
     /// The foreground color of each character.  Each 32-bit RGBA value
-    /// represents a single character. The first 8 bits are the red value, the
-    /// next 8 bits are the green value, the next 8 bits are the blue value, and
-    /// the last 8 bits are the alpha value. The alpha value is currently
-    /// unused.
+    /// represents a single character.  The least significant 8 bits are the
+    /// red value, the next 8 bits are the green value, the next 8 bits are the
+    /// blue value, and the most significant 8 bits are the alpha value. The
+    /// alpha value is currently unused.
     pub fore_image: &'textures Vec<u32>,
 
     /// The background color of each character.  Each 32-bit RGBA value
-    /// represents a single character. The first 8 bits are the red value, the
-    /// next 8 bits are the green value, the next 8 bits are the blue value, and
-    /// the last 8 bits are the alpha value. The alpha value is currently
-    /// unused.
+    /// represents a single character.  The least significant 8 bits are the
+    /// red value, the next 8 bits are the green value, the next 8 bits are the
+    /// blue value, and the most significant 8 bits are the alpha value. The
+    /// alpha value is currently unused.
     pub back_image: &'textures Vec<u32>,
 
     /// The character buffer.  Each 32-bit RGBA value represents a single
-    /// character. The first 8 bits are the ASCII value of the character, and
-    /// the next 24 bits are unused by the engine but are available for use by
-    /// the game.
+    /// character. The least significant 8 bits are the ASCII value of the
+    /// character, and the most significant 24 bits are unused by the engine but
+    /// are available for use by the game.
     pub text_image: &'textures Vec<u32>,
 }

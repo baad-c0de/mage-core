@@ -87,7 +87,7 @@ impl RenderState {
         })
     }
 
-    pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
+    pub(crate) fn resize(&mut self, new_size: PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.surface_config.width = new_size.width;
             self.surface_config.height = new_size.height;
@@ -95,7 +95,7 @@ impl RenderState {
         }
     }
 
-    pub fn render(&mut self) -> Result<(), SurfaceError> {
+    pub(crate) fn render(&mut self) -> Result<(), SurfaceError> {
         let frame = self.surface.get_current_texture()?;
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
 
@@ -131,11 +131,11 @@ impl RenderState {
         Ok(())
     }
 
-    pub fn chars_size(&self) -> (u32, u32) {
+    pub(crate) fn chars_size(&self) -> (u32, u32) {
         (10, 16)
     }
 
-    pub fn images(&self) -> (&Vec<u32>, &Vec<u32>, &Vec<u32>) {
+    pub(crate) fn images(&self) -> (&Vec<u32>, &Vec<u32>, &Vec<u32>) {
         (&self.fore_image, &self.back_image, &self.text_image)
     }
 }

@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bytemuck = "1.13.1"
+image = "0.24.6"
 thiserror = "1.0.40"
 tokio = { version = "1.28.0", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1.37"

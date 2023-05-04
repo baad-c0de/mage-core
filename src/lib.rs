@@ -1,12 +1,13 @@
 mod app;
+mod config;
 mod error;
 mod render;
 
-use std::time::Duration;
+use std::{cmp::max, time::Duration};
 
 pub use app::*;
+pub use config::*;
 pub use error::*;
-pub use render::*;
 
 use error::MageError;
 use render::RenderState;
@@ -19,18 +20,53 @@ use winit::{
     window::WindowBuilder,
 };
 
-pub async fn run<A>(mut app: A) -> Result<(), MageError>
+pub async fn run<A>(mut app: A, config: Config) -> Result<(), MageError>
 where
     A: App + 'static,
 {
+    //
+    // Load font data
+    //
+
+    let font_data = match config.font {
+        Font::Default => load_font_image(include_bytes!("font1.png"))?,
+        Font::Custom(font) => font,
+    };
+
+    // Adjust the dimensions of the window to fit character cells exactly.
+    let width = max(
+        MIN_WINDOW_SIZE.0 * font_data.char_width,
+        config.inner_size.0,
+    ) / font_data.char_width
+        * font_data.char_width;
+    let height = max(
+        MIN_WINDOW_SIZE.1 * font_data.char_height,
+        config.inner_size.1,
+    ) / font_data.char_height
+        * font_data.char_height;
+
+    info!(
+        "Window size (in characters): {}x{}",
+        width / font_data.char_width,
+        height / font_data.char_height
+    );
+
+    //
+    // Set up window, game state and event loop
+    //
+
     let event_loop = EventLoop::new();
 
     let window = WindowBuilder::new()
-        .with_inner_size(PhysicalSize::new(640, 480))
+        .with_inner_size(PhysicalSize::new(width, height))
         .with_title("Mage Game")
+        .with_min_inner_size(PhysicalSize::new(
+            MIN_WINDOW_SIZE.0 * font_data.char_width,
+            MIN_WINDOW_SIZE.1 * font_data.char_height,
+        ))
         .build(&event_loop)?;
 
-    let mut state = RenderState::new(window).await?;
+    let mut render_state = RenderState::new(window).await?;
 
     let mut key_state = KeyState {
         shift: false,
@@ -40,11 +76,15 @@ where
         code: None,
     };
 
+    //
+    // Run the game loop
+    //
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
         match event {
-            Event::WindowEvent { window_id, event } if window_id == state.window.id() => {
+            Event::WindowEvent { window_id, event } if window_id == render_state.window.id() => {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::KeyboardInput {
@@ -58,25 +98,25 @@ where
                     } => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(new_size) => {
                         info!("Resized to {:?}", new_size);
-                        state.resize(new_size);
+                        render_state.resize(new_size);
                     }
                     WindowEvent::ScaleFactorChanged {
                         new_inner_size: new_size,
                         ..
                     } => {
                         info!("Resized to {:?}", new_size);
-                        state.resize(*new_size);
+                        render_state.resize(*new_size);
                     }
                     _ => (),
                 }
             }
-            Event::RedrawRequested(window_id) if window_id == state.window.id() => {
-                if present(&mut app, &mut state) == PresentResult::Changed {
-                    match state.render() {
+            Event::RedrawRequested(window_id) if window_id == render_state.window.id() => {
+                if present(&mut app, &mut render_state) == PresentResult::Changed {
+                    match render_state.render() {
                         Ok(_) => {}
                         Err(SurfaceError::Lost) => {
                             info!("Surface lost, recreating");
-                            state.resize(state.window.inner_size());
+                            render_state.resize(render_state.window.inner_size());
                         }
                         Err(SurfaceError::OutOfMemory) => {
                             error!("Out of memory, exiting");
@@ -87,11 +127,11 @@ where
                 }
             }
             Event::MainEventsCleared => {
-                if tick(&mut app, &mut state, &key_state) == TickResult::Quit {
+                if tick(&mut app, &mut render_state, &key_state) == TickResult::Quit {
                     *control_flow = ControlFlow::Exit;
                 }
                 key_state.vkey = None;
-                state.window.request_redraw();
+                render_state.window.request_redraw();
             }
             _ => (),
         }
@@ -107,7 +147,7 @@ where
         dt: Duration::ZERO,
         width,
         height,
-        key: key_state.clone(),
+        key: *key_state,
         mouse: None,
     };
     app.tick(tick_input)
