@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod error;
+mod input;
 mod render;
 
 use std::{cmp::max, time::Duration};
@@ -8,6 +9,7 @@ use std::{cmp::max, time::Duration};
 pub use app::*;
 pub use config::*;
 pub use error::*;
+pub use input::*;
 
 use error::MageError;
 use render::RenderState;
@@ -19,6 +21,9 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+use winit_fullscreen::WindowFullScreen;
+
+use crate::input::ShiftState;
 
 pub async fn run<A>(mut app: A, config: Config) -> Result<(), MageError>
 where
@@ -67,6 +72,7 @@ where
         .build(&event_loop)?;
 
     let mut render_state = RenderState::new(window, font_data).await?;
+    let mut shift_state = ShiftState::new();
 
     //
     // Run the game loop
@@ -78,6 +84,7 @@ where
         match event {
             Event::WindowEvent { window_id, event } if window_id == render_state.window.id() => {
                 match event {
+                    // Detect window close and escape key for application exit
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::KeyboardInput {
                         input:
@@ -88,6 +95,22 @@ where
                             },
                         ..
                     } => *control_flow = ControlFlow::Exit,
+
+                    // Detect ALT+ENTER for fullscreen toggle
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Return),
+                                ..
+                            },
+                        ..
+                    } if shift_state.alt_only() => {
+                        render_state.window.toggle_fullscreen();
+                    }
+
+                    // Detect window resize and scale factor change.  When this happens, the
+                    // GPU surface is lost and must be recreated.
                     WindowEvent::Resized(new_size) => {
                         info!("Resized to {:?}", new_size);
                         render_state.resize(new_size);
@@ -99,6 +122,12 @@ where
                         info!("Resized to {:?}", new_size);
                         render_state.resize(*new_size);
                     }
+
+                    // Detect shift keys for shift state
+                    WindowEvent::ModifiersChanged(modifiers) => {
+                        shift_state.update(modifiers);
+                    }
+
                     _ => (),
                 }
             }
