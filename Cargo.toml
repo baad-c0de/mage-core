@@ -2,6 +2,12 @@
 name = "mage-core"
 version = "0.1.0"
 edition = "2021"
+authors = ["Baad C0de <baadc0de@proton.me>"]
+description = "An ASCII art game engine written in Rust."
+license = "MIT"
+repository = "https//github.com/baad-c0de/mage-core"
+readme = "README.md"
+keywords = ["ascii", "gamedev", "engine", "terminal", "console", "roguelike"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
