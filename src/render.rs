@@ -10,11 +10,11 @@ use wgpu::{
     CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Features, FragmentState,
     FrontFace, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor, Limits, LoadOp,
     MultisampleState, Operations, Origin3d, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
-    PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor,
-    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface,
-    SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
-    VertexState,
+    PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
+    ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor,
+    TextureViewDimension, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -110,7 +110,8 @@ impl RenderState {
             format: surface_format,
             width: window_size.width,
             height: window_size.height,
-            present_mode: surface_caps.present_modes[0],
+            // present_mode: surface_caps.present_modes[0],
+            present_mode: PresentMode::AutoNoVsync,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
@@ -361,7 +362,7 @@ impl RenderState {
         self.surface_char_size
     }
 
-    pub(crate) fn images(&mut self) -> (&mut Vec<u32>, &mut Vec<u32>, &mut Vec<u32>) {
+    pub(crate) fn images(&mut self) -> (&mut [u32], &mut [u32], &mut [u32]) {
         (
             &mut self.fg_texture.storage,
             &mut self.bg_texture.storage,

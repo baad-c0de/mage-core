@@ -1,5 +1,5 @@
 [package]
-name = "mage"
+name = "mage-core"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bytemuck = { version = "1.13.1", features = ["derive"] }
+chrono = "0.4.24"
 image = "0.24.6"
 thiserror = "1.0.40"
 tokio = { version = "1.28.0", features = ["rt-multi-thread", "macros"] }
@@ -17,4 +18,5 @@ winit-fullscreen = "1.0.1"
 
 [dev-dependencies]
 color-eyre = "0.6.2"
+rand = "0.8.5"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }

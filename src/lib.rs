@@ -1,16 +1,13 @@
-mod app;
-mod config;
-mod error;
-mod input;
-mod render;
+pub mod app;
+pub mod config;
+pub mod error;
+pub mod input;
+pub mod present;
+pub mod render;
 
-use std::{cmp::max, time::Duration};
+use std::cmp::max;
 
-pub use app::*;
-pub use config::*;
-pub use error::*;
-pub use input::*;
-
+use chrono::{Duration, Local};
 use error::MageError;
 use render::RenderState;
 use tracing::{error, info};
@@ -24,6 +21,12 @@ use winit::{
 use winit_fullscreen::WindowFullScreen;
 
 use crate::input::ShiftState;
+
+pub use app::*;
+pub use config::*;
+pub use error::*;
+pub use input::*;
+pub use present::*;
 
 pub async fn run<A>(mut app: A, config: Config) -> Result<(), MageError>
 where
@@ -73,6 +76,8 @@ where
 
     let mut render_state = RenderState::new(window, font_data).await?;
     let mut shift_state = ShiftState::new();
+
+    let mut current_time = Local::now();
 
     //
     // Run the game loop
@@ -148,7 +153,11 @@ where
                 }
             }
             Event::MainEventsCleared => {
-                if tick(&mut app, &mut render_state) == TickResult::Quit {
+                let new_time = Local::now();
+                let dt = new_time - current_time;
+                current_time = new_time;
+
+                if tick(&mut app, &mut render_state, dt) == TickResult::Quit {
                     *control_flow = ControlFlow::Exit;
                 }
                 render_state.window.request_redraw();
@@ -158,16 +167,12 @@ where
     });
 }
 
-fn tick<A>(app: &mut A, state: &mut RenderState) -> TickResult
+fn tick<A>(app: &mut A, state: &mut RenderState, dt: Duration) -> TickResult
 where
     A: App,
 {
     let (width, height) = state.size_in_chars();
-    let tick_input = TickInput {
-        dt: Duration::ZERO,
-        width,
-        height,
-    };
+    let tick_input = TickInput { dt, width, height };
     app.tick(tick_input)
 }
 
