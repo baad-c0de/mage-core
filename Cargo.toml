@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Baad C0de <baadc0de@proton.me>"]
 description = "An ASCII art game engine written in Rust."
 license = "MIT"
-repository = "https//github.com/baad-c0de/mage-core"
+repository = "https://github.com/baad-c0de/mage-core"
 readme = "README.md"
 keywords = ["ascii", "gamedev", "engine", "terminal", "roguelike"]
 
