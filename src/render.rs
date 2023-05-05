@@ -1,7 +1,6 @@
 use std::iter::once;
 
 use bytemuck::{cast_slice, Pod, Zeroable};
-use tracing::info;
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
@@ -296,7 +295,6 @@ impl RenderState {
             );
 
             if chars_size != self.surface_char_size {
-                info!("Resizing textures");
                 self.surface_char_size = chars_size;
                 self.fg_texture = Texture::new(&self.device, chars_size);
                 self.bg_texture = Texture::new(&self.device, chars_size);
