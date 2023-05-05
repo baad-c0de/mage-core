@@ -37,7 +37,7 @@ fn vs_main(
     // 2        (1, 0)
     // 3        (1, 1)
     //
-    let x = (f32((in_vertex_index & 2u) >> 1u) * 2.0) - 1.0;
+    let x = f32(in_vertex_index & 2u) - 1.0;
     let y = (f32(in_vertex_index & 1u) * 2.0) - 1.0;
     out.clip_position = vec4(x, y, 0.0, 1.0);
 
@@ -52,7 +52,7 @@ fn fs_main(
     let p = vec2<f32>(pos.x - 0.5, pos.y - 0.5);
 
     // Calculate the char coords and the local coords inside a character block
-    let cp = vec2(i32(p.x / f32(uniforms.font_width)), i32(p.y / f32(uniforms.font_height)));
+    let cp = vec2(i32(p.x) / i32(uniforms.font_width), i32(p.y) / i32(uniforms.font_height));
     let lp = vec2(i32(p.x) % i32(uniforms.font_width), i32(p.y) % i32(uniforms.font_height));
 
     // Look up the textures

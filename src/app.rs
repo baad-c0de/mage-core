@@ -136,7 +136,7 @@ pub struct TickInput {
 
 /// The [`PresentInput`] struct is passed to the [`present`] method of the
 /// [`App`] trait to provide information about the current frame.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct PresentInput<'textures> {
     /// The width of the window in characters.
     pub width: u32,
@@ -149,18 +149,18 @@ pub struct PresentInput<'textures> {
     /// red value, the next 8 bits are the green value, the next 8 bits are the
     /// blue value, and the most significant 8 bits are the alpha value. The
     /// alpha value is currently unused.
-    pub fore_image: &'textures Vec<u32>,
+    pub fore_image: &'textures mut Vec<u32>,
 
     /// The background color of each character.  Each 32-bit RGBA value
     /// represents a single character.  The least significant 8 bits are the
     /// red value, the next 8 bits are the green value, the next 8 bits are the
     /// blue value, and the most significant 8 bits are the alpha value. The
     /// alpha value is currently unused.
-    pub back_image: &'textures Vec<u32>,
+    pub back_image: &'textures mut Vec<u32>,
 
     /// The character buffer.  Each 32-bit RGBA value represents a single
     /// character. The least significant 8 bits are the ASCII value of the
     /// character, and the most significant 24 bits are unused by the engine but
     /// are available for use by the game.
-    pub text_image: &'textures Vec<u32>,
+    pub text_image: &'textures mut Vec<u32>,
 }

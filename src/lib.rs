@@ -133,7 +133,7 @@ fn tick<A>(app: &mut A, state: &mut RenderState) -> TickResult
 where
     A: App,
 {
-    let (width, height) = state.chars_size();
+    let (width, height) = state.size_in_chars();
     let tick_input = TickInput {
         dt: Duration::ZERO,
         width,
@@ -146,7 +146,7 @@ fn present<A>(app: &mut A, state: &mut RenderState) -> PresentResult
 where
     A: App,
 {
-    let (width, height) = state.chars_size();
+    let (width, height) = state.size_in_chars();
     let (fore_image, back_image, text_image) = state.images();
 
     let present_input = PresentInput {

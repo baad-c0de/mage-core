@@ -1,6 +1,7 @@
 use std::iter::once;
 
 use bytemuck::{cast_slice, Pod, Zeroable};
+use tracing::info;
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
@@ -117,10 +118,17 @@ impl RenderState {
         surface.configure(&device, &surface_config);
 
         let font_size = (16 * font.char_width, 16 * font.char_height);
-        let fg_texture = Texture::new(&device, font_size);
-        let bg_texture = Texture::new(&device, font_size);
-        let chars_texture = Texture::new(&device, font_size);
-        let font_texture = Texture::new(&device, (16 * font.char_width, 16 * font.char_height));
+        let surface_size = (
+            window_size.width / font.char_width,
+            window_size.height / font.char_height,
+        );
+        let fg_texture = Texture::new(&device, surface_size);
+        let bg_texture = Texture::new(&device, surface_size);
+        let chars_texture = Texture::new(&device, surface_size);
+        let mut font_texture = Texture::new(&device, font_size);
+
+        font_texture.storage.copy_from_slice(font.data.as_slice());
+        font_texture.update(&queue);
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -288,7 +296,8 @@ impl RenderState {
             );
 
             if chars_size != self.surface_char_size {
-                self.font_char_size = chars_size;
+                info!("Resizing textures");
+                self.surface_char_size = chars_size;
                 self.fg_texture = Texture::new(&self.device, chars_size);
                 self.bg_texture = Texture::new(&self.device, chars_size);
                 self.chars_texture = Texture::new(&self.device, chars_size);
@@ -306,6 +315,10 @@ impl RenderState {
     }
 
     pub(crate) fn render(&mut self) -> Result<(), SurfaceError> {
+        self.fg_texture.update(&self.queue);
+        self.bg_texture.update(&self.queue);
+        self.chars_texture.update(&self.queue);
+
         let frame = self.surface.get_current_texture()?;
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
 
@@ -316,7 +329,7 @@ impl RenderState {
             });
 
         {
-            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &view,
@@ -333,6 +346,11 @@ impl RenderState {
                 })],
                 depth_stencil_attachment: None,
             });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            render_pass.draw(0..4, 0..1);
         }
 
         self.queue.submit(once(encoder.finish()));
@@ -341,15 +359,15 @@ impl RenderState {
         Ok(())
     }
 
-    pub(crate) fn chars_size(&self) -> (u32, u32) {
-        (10, 16)
+    pub(crate) fn size_in_chars(&self) -> (u32, u32) {
+        self.surface_char_size
     }
 
-    pub(crate) fn images(&self) -> (&Vec<u32>, &Vec<u32>, &Vec<u32>) {
+    pub(crate) fn images(&mut self) -> (&mut Vec<u32>, &mut Vec<u32>, &mut Vec<u32>) {
         (
-            &self.fg_texture.storage,
-            &self.bg_texture.storage,
-            &self.chars_texture.storage,
+            &mut self.fg_texture.storage,
+            &mut self.bg_texture.storage,
+            &mut self.chars_texture.storage,
         )
     }
 }
