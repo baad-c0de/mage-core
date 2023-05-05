@@ -7,7 +7,7 @@ description = "An ASCII art game engine written in Rust."
 license = "MIT"
 repository = "https//github.com/baad-c0de/mage-core"
 readme = "README.md"
-keywords = ["ascii", "gamedev", "engine", "terminal", "console", "roguelike"]
+keywords = ["ascii", "gamedev", "engine", "terminal", "roguelike"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
