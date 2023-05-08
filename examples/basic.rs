@@ -1,5 +1,6 @@
 use mage_core::{
-    load_font_image, run, App, Config, Font, PresentInput, PresentResult, TickInput, TickResult,
+    image::Point, load_font_image, run, App, Colour, Config, Font, PresentInput, PresentResult,
+    TickInput, TickResult,
 };
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -44,23 +45,36 @@ impl App for TestApp {
     }
 
     fn present(&mut self, mut present_input: PresentInput) -> PresentResult {
-        randomise(present_input.fore_image);
-        randomise(present_input.back_image);
-        randomise(present_input.text_image);
+        let mut image = present_input.new_image();
+
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        image.fore_image.iter_mut().for_each(|c| {
+            *c = rng.gen::<u32>() | 0xff000000;
+        });
+        image.back_image.iter_mut().for_each(|c| {
+            *c = rng.gen::<u32>() | 0xff000000;
+        });
+        image.text_image.iter_mut().for_each(|c| {
+            *c = rng.gen::<u8>() as u32;
+        });
 
         let fps = (1.0 / self.dt) as u32;
         let message = format!("FPS: {} ", fps);
-        let message = message.as_bytes();
-        present_input.print_at(0, 0, message, 0xffffff, 0x0000ff);
+        image.draw_string(
+            Point::default(),
+            &message,
+            Colour::White.into(),
+            Colour::LightRed.into(),
+        );
+
+        present_input.blit(
+            present_input.rect(),
+            image.rect(),
+            &image,
+            Colour::Black.into(),
+        );
 
         PresentResult::Changed
-    }
-}
-
-fn randomise(image: &mut [u32]) {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    for pixel in image {
-        *pixel = rng.gen::<u32>() | 0xff000000;
     }
 }

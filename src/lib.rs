@@ -1,6 +1,8 @@
 pub mod app;
+pub mod colour;
 pub mod config;
 pub mod error;
+pub mod image;
 pub mod input;
 pub mod present;
 pub mod render;
@@ -23,6 +25,7 @@ use winit_fullscreen::WindowFullScreen;
 use crate::input::ShiftState;
 
 pub use app::*;
+pub use colour::*;
 pub use config::*;
 pub use error::*;
 pub use input::*;

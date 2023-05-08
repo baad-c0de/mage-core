@@ -1,4 +1,7 @@
-use mage::{run, App, Config};
+use mage_core::{
+    image::{Char, Point},
+    run, App, Colour, Config, PresentInput, PresentResult, TickInput, TickResult,
+};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -31,14 +34,32 @@ impl HelloApp {
 }
 
 impl App for HelloApp {
-    fn tick(&mut self, _tick_input: mage::TickInput) -> mage::TickResult {
-        mage::TickResult::Continue
+    fn tick(&mut self, _tick_input: TickInput) -> TickResult {
+        TickResult::Continue
     }
 
-    fn present(&mut self, mut present_input: mage::PresentInput) -> mage::PresentResult {
-        present_input.print_at(0, 0, b"Hello, World!", 0xff000000, 0xff00ffff);
-        present_input.print_at(-1, 0, b"A", 0xff0000ff, 0x00000000);
+    fn present(&mut self, mut present_input: PresentInput) -> PresentResult {
+        let mut image = present_input.new_image();
+        image.clear(Colour::White.into(), Colour::Black.into());
 
-        mage::PresentResult::Changed
+        image.draw_string(
+            Point::new(0, 0),
+            "Hello, World!",
+            Colour::Black.into(),
+            Colour::Yellow.into(),
+        );
+        image.draw_char(
+            Point::new(image.width as i32 - 1, 0),
+            Char::new_char('A', Colour::LightRed.into(), Colour::Black.into()),
+        );
+
+        present_input.blit(
+            present_input.rect(),
+            image.rect(),
+            &image,
+            Colour::Black.into(),
+        );
+
+        PresentResult::Changed
     }
 }
