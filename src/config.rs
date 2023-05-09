@@ -8,7 +8,7 @@ pub const MIN_WINDOW_SIZE: (u32, u32) = (20, 20);
 /// Used to store the configuration required to run the Mage game engine.
 pub struct Config {
     /// The title of the window.
-    pub title: String,
+    pub title: Option<String>,
 
     /// The size of the window in characters.
     ///
@@ -26,7 +26,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            title: "Mage Game".to_string(),
+            title: None,
             inner_size: (800, 600),
             font: Font::Default,
         }
