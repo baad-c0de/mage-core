@@ -70,7 +70,7 @@ where
 
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(width, height))
-        .with_title("Mage Game")
+        .with_title(config.title.unwrap_or("Mage Game".to_string()))
         .with_min_inner_size(PhysicalSize::new(
             MIN_WINDOW_SIZE.0 * font_data.char_width,
             MIN_WINDOW_SIZE.1 * font_data.char_height,
