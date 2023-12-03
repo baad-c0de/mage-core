@@ -1,10 +1,13 @@
 use image::ImageError;
 use thiserror::Error;
 use wgpu::{CreateSurfaceError, RequestDeviceError};
-use winit::error::OsError;
+use winit::error::{EventLoopError, OsError};
 
 #[derive(Debug, Error)]
 pub enum MageError {
+    #[error("unable to create event loop")]
+    EventLoopError(#[from] EventLoopError),
+
     #[error("unable to open window")]
     WindowError(#[from] OsError),
 

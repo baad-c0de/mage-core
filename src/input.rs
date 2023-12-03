@@ -1,4 +1,4 @@
-use winit::event::ModifiersState;
+use winit::keyboard::ModifiersState;
 
 pub struct ShiftState {
     shift: bool,
@@ -56,9 +56,9 @@ impl ShiftState {
     }
 
     pub fn update(&mut self, modifiers: ModifiersState) {
-        self.shift = modifiers.shift();
-        self.ctrl = modifiers.ctrl();
-        self.alt = modifiers.alt();
+        self.shift = modifiers.shift_key();
+        self.ctrl = modifiers.control_key();
+        self.alt = modifiers.alt_key();
     }
 }
 

@@ -12,9 +12,9 @@ use wgpu::{
     MultisampleState, Operations, Origin3d, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
     PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
-    ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor,
-    TextureViewDimension, VertexState,
+    ShaderStages, StoreOp, Surface, SurfaceConfiguration, SurfaceError, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
+    TextureViewDescriptor, TextureViewDimension, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -73,7 +73,7 @@ impl RenderState {
 
         let instance = Instance::new(InstanceDescriptor {
             backends: Backends::all(),
-            dx12_shader_compiler: Default::default(),
+            ..Default::default()
         });
 
         let surface = unsafe { instance.create_surface(&window) }?;
@@ -340,10 +340,12 @@ impl RenderState {
                             b: 0.3,
                             a: 1.0,
                         }),
-                        store: true,
+                        store: StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             render_pass.set_pipeline(&self.render_pipeline);

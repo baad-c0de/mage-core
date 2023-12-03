@@ -16,10 +16,12 @@ use tracing::{error, info};
 use wgpu::SurfaceError;
 use winit::{
     dpi::PhysicalSize,
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
     window::WindowBuilder,
 };
+
 use winit_fullscreen::WindowFullScreen;
 
 use crate::input::ShiftState;
@@ -66,7 +68,7 @@ where
     // Set up window, game state and event loop
     //
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new()?;
 
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(width, height))
@@ -86,30 +88,31 @@ where
     // Run the game loop
     //
 
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
+    let _ = event_loop.run(move |event, ev_loop| {
+        ev_loop.set_control_flow(ControlFlow::Poll);
 
         match event {
             Event::WindowEvent { window_id, event } if window_id == render_state.window.id() => {
                 match event {
                     // Detect window close and escape key for application exit
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::CloseRequested => ev_loop.exit(),
                     WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
+                        event:
+                            KeyEvent {
                                 state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
+
+                                physical_key: PhysicalKey::Code(KeyCode::Escape),
                                 ..
                             },
                         ..
-                    } => *control_flow = ControlFlow::Exit,
+                    } => ev_loop.exit(),
 
                     // Detect ALT+ENTER for fullscreen toggle
                     WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
+                        event:
+                            KeyEvent {
                                 state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Return),
+                                physical_key: PhysicalKey::Code(KeyCode::Enter),
                                 ..
                             },
                         ..
@@ -123,51 +126,52 @@ where
                         info!("Resized to {:?}", new_size);
                         render_state.resize(new_size);
                     }
-                    WindowEvent::ScaleFactorChanged {
-                        new_inner_size: new_size,
-                        ..
-                    } => {
+                    WindowEvent::ScaleFactorChanged { .. } => {
+                        let new_size = render_state.window.inner_size();
                         info!("Resized to {:?}", new_size);
-                        render_state.resize(*new_size);
+                        render_state.resize(new_size);
                     }
 
                     // Detect shift keys for shift state
                     WindowEvent::ModifiersChanged(modifiers) => {
-                        shift_state.update(modifiers);
+                        shift_state.update(modifiers.state());
+                    }
+
+                    WindowEvent::RedrawRequested => {
+                        if present(&mut app, &mut render_state) == PresentResult::Changed {
+                            match render_state.render() {
+                                Ok(_) => {}
+                                Err(SurfaceError::Lost) => {
+                                    info!("Surface lost, recreating");
+                                    render_state.resize(render_state.window.inner_size());
+                                }
+                                Err(SurfaceError::OutOfMemory) => {
+                                    error!("Out of memory, exiting");
+                                    ev_loop.exit();
+                                }
+                                Err(e) => error!("Error: {:?}", e),
+                            }
+                        }
                     }
 
                     _ => (),
                 }
             }
-            Event::RedrawRequested(window_id) if window_id == render_state.window.id() => {
-                if present(&mut app, &mut render_state) == PresentResult::Changed {
-                    match render_state.render() {
-                        Ok(_) => {}
-                        Err(SurfaceError::Lost) => {
-                            info!("Surface lost, recreating");
-                            render_state.resize(render_state.window.inner_size());
-                        }
-                        Err(SurfaceError::OutOfMemory) => {
-                            error!("Out of memory, exiting");
-                            *control_flow = ControlFlow::Exit;
-                        }
-                        Err(e) => error!("Error: {:?}", e),
-                    }
-                }
-            }
-            Event::MainEventsCleared => {
+            Event::AboutToWait => {
                 let new_time = Local::now();
                 let dt = new_time - current_time;
                 current_time = new_time;
 
                 if tick(&mut app, &mut render_state, dt) == TickResult::Quit {
-                    *control_flow = ControlFlow::Exit;
+                    ev_loop.exit();
                 }
                 render_state.window.request_redraw();
             }
             _ => (),
         }
     });
+
+    Ok(())
 }
 
 fn tick<A>(app: &mut A, state: &mut RenderState, dt: Duration) -> TickResult
