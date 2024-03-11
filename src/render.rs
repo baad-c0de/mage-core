@@ -63,12 +63,19 @@ pub(crate) struct RenderState {
     /// The size of each character in the font texture.
     font_char_size: (u32, u32),
 
+    /// The scale of the characters shown on the screen.
+    font_scale: u32,
+
     /// The size of the surface in characters.
     surface_char_size: (u32, u32),
 }
 
 impl RenderState {
-    pub(crate) async fn new(window: Window, font: FontData) -> Result<Self, MageError> {
+    pub(crate) async fn new(
+        window: Window,
+        font: FontData,
+        font_scale: u32,
+    ) -> Result<Self, MageError> {
         let window_size = window.inner_size();
 
         let instance = Instance::new(InstanceDescriptor {
@@ -117,15 +124,15 @@ impl RenderState {
         };
         surface.configure(&device, &surface_config);
 
-        let font_size = (16 * font.char_width, 16 * font.char_height);
-        let surface_size = (
-            window_size.width / font.char_width,
-            window_size.height / font.char_height,
+        let font_char_size = (16 * font.char_width, 16 * font.char_height);
+        let surface_char_size = (
+            window_size.width / font.char_width / font_scale,
+            window_size.height / font.char_height / font_scale,
         );
-        let fg_texture = Texture::new(&device, surface_size);
-        let bg_texture = Texture::new(&device, surface_size);
-        let chars_texture = Texture::new(&device, surface_size);
-        let mut font_texture = Texture::new(&device, font_size);
+        let fg_texture = Texture::new(&device, surface_char_size);
+        let bg_texture = Texture::new(&device, surface_char_size);
+        let chars_texture = Texture::new(&device, surface_char_size);
+        let mut font_texture = Texture::new(&device, font_char_size);
 
         font_texture.storage.copy_from_slice(font.data.as_slice());
         font_texture.update(&queue);
@@ -188,7 +195,8 @@ impl RenderState {
         let uniforms = RenderUniforms {
             font_width: font.char_width,
             font_height: font.char_height,
-            _padding: [0; 2],
+            font_scale: font_scale,
+            _padding: [0; 1],
         };
         let uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Uniform Buffer for Render"),
@@ -217,12 +225,6 @@ impl RenderState {
                 resource: uniform_buffer.as_entire_binding(),
             }],
         });
-
-        let font_char_size = (font.char_width, font.char_height);
-        let surface_char_size = (
-            window_size.width / font.char_width,
-            window_size.height / font.char_height,
-        );
 
         let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -280,6 +282,7 @@ impl RenderState {
             texture_bind_group,
             uniform_bind_group,
             font_char_size,
+            font_scale,
             surface_char_size,
         })
     }
@@ -495,6 +498,9 @@ struct RenderUniforms {
     /// The height of a single character in pixels.
     font_height: u32,
 
+    /// The scale of the font.
+    font_scale: u32,
+
     /// Some padding.
-    _padding: [u32; 2],
+    _padding: [u32; 1],
 }

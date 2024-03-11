@@ -10,8 +10,13 @@ struct VertexOutput {
 @group(0) @binding(3) var t_font: texture_2d<f32>;
 
 struct Uniforms {
+    // The number of pixels in a single character cell (width) in the font texture.
     font_width: u32,
+    // The number of pixels in a single character cell (height) in the font texture.
     font_height: u32,
+    // The scale of the font.  How many pixels on the screen correspond to a single 
+    // pixel in the character font.
+    font_scale: u32,
 }
 
 @group(1) @binding(0) var<uniform> uniforms: Uniforms;
@@ -50,10 +55,14 @@ fn fs_main(
 ) -> @location(0) vec4<f32> {
     // Calculate the pixel coords
     let p = vec2<f32>(pos.x - 0.5, pos.y - 0.5);
+    let font_size_in_texture = vec2<i32>(uniforms.font_width, uniforms.font_height);
+    let font_size_on_screen = font_size_in_texture * uniforms.font_scale;
 
-    // Calculate the char coords and the local coords inside a character block
-    let cp = vec2(i32(p.x) / i32(uniforms.font_width), i32(p.y) / i32(uniforms.font_height));
-    let lp = vec2(i32(p.x) % i32(uniforms.font_width), i32(p.y) % i32(uniforms.font_height));
+    // Calculate the char coords and the local coords inside a character block.
+    // `cp` is the coordinates of the current pixel in character cells.
+    // `lp` is the coordinates of the current pixel inside a character cell.
+    let cp = i32(p) / font_size_on_screen;
+    let lp = i32(p) % font_size_on_screen / uniforms.font_scale;
 
     // Look up the textures
     let fore = textureLoad(t_fore, cp, 0);
@@ -65,15 +74,13 @@ fn fs_main(
 
     // Calculate the character coords in the font texture.  We expect the font
     // texture to be 16*16 characters.
-    let fx = c % 16;
-    let fy = c / 16;
+    let fp = vec2<i32>(c % 16, c / 16);
 
-    // Calculate the pixer coords within the font texture
-    let lx = fx * i32(uniforms.font_width) + lp.x;
-    let ly = fy * i32(uniforms.font_height) + lp.y;
+    // Calculate the pixel coords within the font texture
+    let p = fp * font_size_in_texture + lp;
 
     // Fetch the pixel in the font texture
-    let font_pixel = textureLoad(t_font, vec2<i32>(lx, ly), 0);
+    let font_pixel = textureLoad(t_font, p, 0);
 
     if font_pixel.r < 0.5 {
         return back;

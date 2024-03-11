@@ -7,8 +7,6 @@ pub mod input;
 pub mod present;
 pub mod render;
 
-use std::cmp::max;
-
 use chrono::{Duration, Local};
 use error::MageError;
 use render::RenderState;
@@ -33,6 +31,11 @@ pub use error::*;
 pub use input::*;
 pub use present::*;
 
+/// Returns the value aligned down to the nearest multiple of the alignment.
+fn align_down(value: u32, alignment: u32) -> u32 {
+    value / alignment * alignment
+}
+
 pub async fn run<A>(mut app: A, config: Config) -> Result<(), MageError>
 where
     A: App + 'static,
@@ -46,22 +49,40 @@ where
         Font::Custom(font) => font,
     };
 
-    // Adjust the dimensions of the window to fit character cells exactly.
-    let width = max(
-        MIN_WINDOW_SIZE.0 * font_data.char_width,
-        config.inner_size.0,
-    ) / font_data.char_width
-        * font_data.char_width;
-    let height = max(
-        MIN_WINDOW_SIZE.1 * font_data.char_height,
-        config.inner_size.1,
-    ) / font_data.char_height
-        * font_data.char_height;
+    //
+    // Calculate the window size and font scale based on the font data and
+    // window size mode.
+    //
+    let (width, height, scale, snap_size) = match config.window_size {
+        WindowSize::FixedCellSize(window_width_pixels, window_height_pixels) => {
+            let width = align_down(window_width_pixels, font_data.char_width);
+            let height = align_down(window_height_pixels, font_data.char_height);
+            (
+                width,
+                height,
+                1u32,
+                (font_data.char_width, font_data.char_height),
+            )
+        }
+        WindowSize::FixedCellDimensions(window_width_cells, window_height_cells) => {
+            let width = window_width_cells * font_data.char_width;
+            let height = window_height_cells * font_data.char_height;
+            (width, height, 1u32, (width, height))
+        }
+        WindowSize::FixedWindowSize(window_width_cells, window_height_cells, cell_scale) => {
+            let width = window_width_cells * font_data.char_width * u32::from(cell_scale);
+            let height = window_height_cells * font_data.char_height * u32::from(cell_scale);
+            (width, height, u32::from(cell_scale), (0u32, 0u32))
+        }
+    };
 
+    // Adjust the dimensions of the window to fit character cells exactly.
     info!(
-        "Window size (in characters): {}x{}",
+        "Window size (in characters): {}x{}; scale: {}; snap size: {:?}",
         width / font_data.char_width,
-        height / font_data.char_height
+        height / font_data.char_height,
+        scale,
+        snap_size
     );
 
     //
@@ -79,7 +100,7 @@ where
         ))
         .build(&event_loop)?;
 
-    let mut render_state = RenderState::new(window, font_data).await?;
+    let mut render_state = RenderState::new(window, font_data, scale).await?;
     let mut shift_state = ShiftState::new();
 
     let mut current_time = Local::now();
