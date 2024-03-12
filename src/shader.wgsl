@@ -54,15 +54,20 @@ fn fs_main(
     @builtin(position) pos: vec4<f32>,
 ) -> @location(0) vec4<f32> {
     // Calculate the pixel coords
+    // Floating point coordinates of the top-left corner of the current pixel.
     let p = vec2<f32>(pos.x - 0.5, pos.y - 0.5);
-    let font_size_in_texture = vec2<i32>(uniforms.font_width, uniforms.font_height);
-    let font_size_on_screen = font_size_in_texture * uniforms.font_scale;
+    // Integer coordinates of the current pixel.
+    let ip = vec2<i32>(i32(p.x), i32(p.y));
+    // Size of a single cell in the font texture.
+    let font_size_in_texture = vec2<i32>(i32(uniforms.font_width), i32(uniforms.font_height));
+    // Size of a single cell on the screen
+    let font_size_on_screen = font_size_in_texture * i32(uniforms.font_scale);
 
     // Calculate the char coords and the local coords inside a character block.
     // `cp` is the coordinates of the current pixel in character cells.
     // `lp` is the coordinates of the current pixel inside a character cell.
-    let cp = i32(p) / font_size_on_screen;
-    let lp = i32(p) % font_size_on_screen / uniforms.font_scale;
+    let cp = ip / font_size_on_screen;
+    let lp = ip % font_size_on_screen / i32(uniforms.font_scale);
 
     // Look up the textures
     let fore = textureLoad(t_fore, cp, 0);
@@ -77,10 +82,10 @@ fn fs_main(
     let fp = vec2<i32>(c % 16, c / 16);
 
     // Calculate the pixel coords within the font texture
-    let p = fp * font_size_in_texture + lp;
+    let font_p = fp * font_size_in_texture + lp;
 
     // Fetch the pixel in the font texture
-    let font_pixel = textureLoad(t_font, p, 0);
+    let font_pixel = textureLoad(t_font, font_p, 0);
 
     if font_pixel.r < 0.5 {
         return back;

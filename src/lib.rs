@@ -84,6 +84,7 @@ where
         scale,
         snap_size
     );
+    info!("Window size (in pixels): {width}x{height}");
 
     //
     // Set up window, game state and event loop

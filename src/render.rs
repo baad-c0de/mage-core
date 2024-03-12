@@ -1,6 +1,7 @@
 use std::iter::once;
 
 use bytemuck::{cast_slice, Pod, Zeroable};
+use tracing::trace;
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
@@ -124,15 +125,16 @@ impl RenderState {
         };
         surface.configure(&device, &surface_config);
 
-        let font_char_size = (16 * font.char_width, 16 * font.char_height);
+        let texture_font_char_size = (16 * font.char_width, 16 * font.char_height);
         let surface_char_size = (
             window_size.width / font.char_width / font_scale,
             window_size.height / font.char_height / font_scale,
         );
+        trace!("Surface char size: {surface_char_size:?}");
         let fg_texture = Texture::new(&device, surface_char_size);
         let bg_texture = Texture::new(&device, surface_char_size);
         let chars_texture = Texture::new(&device, surface_char_size);
-        let mut font_texture = Texture::new(&device, font_char_size);
+        let mut font_texture = Texture::new(&device, texture_font_char_size);
 
         font_texture.storage.copy_from_slice(font.data.as_slice());
         font_texture.update(&queue);
@@ -195,7 +197,7 @@ impl RenderState {
         let uniforms = RenderUniforms {
             font_width: font.char_width,
             font_height: font.char_height,
-            font_scale: font_scale,
+            font_scale,
             _padding: [0; 1],
         };
         let uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
@@ -281,7 +283,7 @@ impl RenderState {
             texture_bind_group_layout,
             texture_bind_group,
             uniform_bind_group,
-            font_char_size,
+            font_char_size: (font.char_width, font.char_height),
             font_scale,
             surface_char_size,
         })
@@ -294,8 +296,8 @@ impl RenderState {
             self.surface.configure(&self.device, &self.surface_config);
 
             let chars_size = (
-                new_size.width / self.font_char_size.0,
-                new_size.height / self.font_char_size.1,
+                new_size.width / self.font_char_size.0 / self.font_scale,
+                new_size.height / self.font_char_size.1 / self.font_scale,
             );
 
             if chars_size != self.surface_char_size {

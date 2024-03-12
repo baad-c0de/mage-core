@@ -1,5 +1,6 @@
 /// Represents a rectangular collection of chars to render as sprites or
 /// screens.
+#[derive(Debug)]
 pub struct Image {
     /// The width of the image in chars.
     pub width: u32,
