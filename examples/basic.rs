@@ -1,6 +1,6 @@
 use mage_core::{
     image::Point, load_font_image, run, App, Colour, Config, Font, PresentInput, PresentResult,
-    TickInput, TickResult,
+    TickInput, TickResult, WindowSize,
 };
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -22,6 +22,7 @@ async fn main() {
     let app = TestApp::new();
     let config = Config {
         font: Font::Custom(load_font_image(include_bytes!("font3.png")).unwrap()),
+        window_size: WindowSize::FixedCellWithPixelSize(20 * 16, 10 * 16),
         ..Default::default()
     };
 

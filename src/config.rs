@@ -5,7 +5,7 @@ use image::{load_from_memory, EncodableLayout, GenericImageView};
 
 use crate::error::MageError;
 
-pub const MIN_WINDOW_SIZE: (u32, u32) = (20, 20);
+pub const MIN_WINDOW_SIZE: (u32, u32) = (5, 5);
 
 /// Defines the size of the window and how it and its cells change when it
 /// changes.
@@ -23,7 +23,7 @@ pub enum WindowSize {
     /// For example, if you choose 320x240 as the window size in pixels, and the
     /// cells are 8x8 pixels, the window's inner size will be 320x240 showing
     /// 40x30 cells.
-    FixedCellSize(u32, u32),
+    FixedCellWithPixelSize(u32, u32),
 
     /// The number of cells is fixed and the cell size changes to reflect the
     /// window size.  The first value is the width of the window in cells, and
@@ -39,7 +39,7 @@ pub enum WindowSize {
     /// For example, if you chose 320x240 as the size of the window in cells,
     /// and the cells are 8x8 pixels, the window's inner size will be 2560x1920,
     /// or multiple thereof.
-    FixedCellDimensions(u32, u32),
+    DynamicCellWithCellSize(u32, u32),
 
     /// The window size is fixed and cannot be resized.  The first value is the
     /// width of the window in cells, and the second value is the height of the
@@ -48,7 +48,7 @@ pub enum WindowSize {
     ///
     /// The window is not resizable, and the size of the window is calculated
     /// from the number of cells and scale.
-    FixedWindowSize(u32, u32, NonZeroU32),
+    DynamicScaleCellSize(u32, u32, NonZeroU32),
 }
 
 pub struct WindowSizeData {
@@ -80,7 +80,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             title: None,
-            window_size: WindowSize::FixedCellSize(800, 600),
+            window_size: WindowSize::FixedCellWithPixelSize(800, 600),
             font: Font::Default,
         }
     }

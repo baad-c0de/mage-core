@@ -53,28 +53,67 @@ where
     // Calculate the window size and font scale based on the font data and
     // window size mode.
     //
-    let (width, height, scale, snap_size) = match config.window_size {
-        WindowSize::FixedCellSize(window_width_pixels, window_height_pixels) => {
+    let (width, height, scale, snap_size, (min_width, min_height)) = match config.window_size {
+        WindowSize::FixedCellWithPixelSize(window_width_pixels, window_height_pixels) => {
+            // Ensure width and height is a multiple of the character dimensions
             let width = align_down(window_width_pixels, font_data.char_width);
             let height = align_down(window_height_pixels, font_data.char_height);
             (
+                // Given window size (aligned down) for window dimensions
                 width,
                 height,
+                // Cell doesn't scale so scale is 1
                 1u32,
+                // Snap size is the same as the character size
                 (font_data.char_width, font_data.char_height),
+                // Minimum window size is 20x20 cells
+                (
+                    MIN_WINDOW_SIZE.0 * font_data.char_width,
+                    MIN_WINDOW_SIZE.1 * font_data.char_height,
+                ),
             )
         }
-        WindowSize::FixedCellDimensions(window_width_cells, window_height_cells) => {
+        WindowSize::DynamicCellWithCellSize(window_width_cells, window_height_cells) => {
+            // Initial window size is the cell size multiplied by the number of cells
             let width = window_width_cells * font_data.char_width;
             let height = window_height_cells * font_data.char_height;
-            (width, height, 1u32, (width, height))
+            (
+                // Enough window size to contain the cells
+                width,
+                height,
+                // Cell doesn't scale so scale is 1
+                1u32,
+                // Snap size is the same as the initial window as number of
+                // cells do not change, only their scale.
+                (width, height),
+                // Minimum window size is 20x20 cells (at scale level 1)
+                (
+                    MIN_WINDOW_SIZE.0 * font_data.char_width,
+                    MIN_WINDOW_SIZE.1 * font_data.char_height,
+                ),
+            )
         }
-        WindowSize::FixedWindowSize(window_width_cells, window_height_cells, cell_scale) => {
+        WindowSize::DynamicScaleCellSize(window_width_cells, window_height_cells, cell_scale) => {
+            // Initial window size is the given number of cells multiplied by the cell scale
             let width = window_width_cells * font_data.char_width * u32::from(cell_scale);
             let height = window_height_cells * font_data.char_height * u32::from(cell_scale);
-            (width, height, u32::from(cell_scale), (0u32, 0u32))
+            (
+                // Enough window size to contain the cells at the given scale
+                width,
+                height,
+                // Scale is the given cell scale
+                u32::from(cell_scale),
+                // Snap size is disabled since we don't resize window
+                (0u32, 0u32),
+                // Minimum window size is the initial window size (as it doesn't resize)
+                (
+                    window_width_cells * font_data.char_width,
+                    window_height_cells * font_data.char_height,
+                ),
+            )
         }
     };
+    dbg!(width, height, scale, snap_size, min_width, min_height);
 
     // Adjust the dimensions of the window to fit character cells exactly.
     info!(
@@ -95,10 +134,8 @@ where
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(width, height))
         .with_title(config.title.unwrap_or("Mage Game".to_string()))
-        .with_min_inner_size(PhysicalSize::new(
-            MIN_WINDOW_SIZE.0 * font_data.char_width,
-            MIN_WINDOW_SIZE.1 * font_data.char_height,
-        ))
+        .with_min_inner_size(PhysicalSize::new(min_width, min_height))
+        .with_resizable(snap_size.0 != 0 && snap_size.1 != 0)
         .build(&event_loop)?;
 
     let mut render_state = RenderState::new(window, font_data, scale).await?;
