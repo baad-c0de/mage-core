@@ -139,6 +139,7 @@ where
                             },
                         ..
                     } if shift_state.alt_only() => {
+                        info!("Toggling fullscreen");
                         render_state.window.toggle_fullscreen();
                     }
 
