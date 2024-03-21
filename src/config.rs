@@ -48,7 +48,7 @@ pub enum WindowSize {
     ///
     /// The window is not resizable, and the size of the window is calculated
     /// from the number of cells and scale.
-    DynamicScaleCellSize(u32, u32, NonZeroU32),
+    DynamicScaleWithCellSize(u32, u32, NonZeroU32),
 }
 
 pub struct WindowSizeData {

@@ -10,7 +10,7 @@ pub mod render;
 use chrono::{Duration, Local};
 use error::MageError;
 use render::RenderState;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 use wgpu::SurfaceError;
 use winit::{
     dpi::PhysicalSize,
@@ -93,7 +93,11 @@ where
                 ),
             )
         }
-        WindowSize::DynamicScaleCellSize(window_width_cells, window_height_cells, cell_scale) => {
+        WindowSize::DynamicScaleWithCellSize(
+            window_width_cells,
+            window_height_cells,
+            cell_scale,
+        ) => {
             // Initial window size is the given number of cells multiplied by the cell scale
             let width = window_width_cells * font_data.char_width * u32::from(cell_scale);
             let height = window_height_cells * font_data.char_height * u32::from(cell_scale);
@@ -138,10 +142,13 @@ where
         .with_resizable(snap_size.0 != 0 && snap_size.1 != 0)
         .build(&event_loop)?;
 
-    let mut render_state = RenderState::new(window, font_data, scale).await?;
+    let mut render_state =
+        RenderState::new(window, font_data, scale, (snap_size.0, snap_size.1)).await?;
     let mut shift_state = ShiftState::new();
 
     let mut current_time = Local::now();
+
+    let mut can_start_resizing = false;
 
     //
     // Run the game loop
@@ -149,6 +156,8 @@ where
 
     let _ = event_loop.run(move |event, ev_loop| {
         ev_loop.set_control_flow(ControlFlow::Poll);
+
+        // trace!("Event: {:?}", event);
 
         match event {
             Event::WindowEvent { window_id, event } if window_id == render_state.window.id() => {
@@ -177,18 +186,36 @@ where
                         ..
                     } if shift_state.alt_only() => {
                         info!("Toggling fullscreen");
+                        can_start_resizing = false;
                         render_state.window.toggle_fullscreen();
                     }
 
                     // Detect window resize and scale factor change.  When this happens, the
                     // GPU surface is lost and must be recreated.
                     WindowEvent::Resized(new_size) => {
-                        info!("Resized to {:?}", new_size);
-                        render_state.resize(new_size);
+                        if can_start_resizing {
+                            let actual_new_size =
+                                render_state.calculate_new_size((new_size.width, new_size.height));
+                            trace!("Resized to {new_size:?}, but should be {actual_new_size:?}");
+                            if actual_new_size.0 != new_size.width
+                                || actual_new_size.1 != new_size.height
+                            {
+                                trace!("Snapping to {actual_new_size:?}");
+                                let _ = render_state.window.request_inner_size(PhysicalSize::new(
+                                    actual_new_size.0,
+                                    actual_new_size.1,
+                                ));
+                            } else {
+                                render_state.resize(new_size);
+                            }
+                        } else {
+                            trace!("Ignoring resize event");
+                            can_start_resizing = true;
+                        }
                     }
                     WindowEvent::ScaleFactorChanged { .. } => {
                         let new_size = render_state.window.inner_size();
-                        info!("Resized to {:?}", new_size);
+                        info!("Scale factor changed, resized to {:?}", new_size);
                         render_state.resize(new_size);
                     }
 

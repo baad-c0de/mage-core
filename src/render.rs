@@ -19,7 +19,7 @@ use wgpu::{
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{error::MageError, FontData};
+use crate::{error::MageError, FontData, MIN_WINDOW_SIZE};
 
 pub(crate) struct RenderState {
     /// The surface that we'll render to.
@@ -69,6 +69,12 @@ pub(crate) struct RenderState {
 
     /// The size of the surface in characters.
     surface_char_size: (u32, u32),
+
+    /// The initial base size of the window.
+    base_size: (u32, u32),
+
+    /// The snap size of the window.
+    snap_size: (u32, u32),
 }
 
 impl RenderState {
@@ -76,6 +82,7 @@ impl RenderState {
         window: Window,
         font: FontData,
         font_scale: u32,
+        snap_size: (u32, u32),
     ) -> Result<Self, MageError> {
         let window_size = window.inner_size();
 
@@ -286,6 +293,8 @@ impl RenderState {
             font_char_size: (font.char_width, font.char_height),
             font_scale,
             surface_char_size,
+            base_size: (window_size.width, window_size.height),
+            snap_size,
         })
     }
 
@@ -374,6 +383,36 @@ impl RenderState {
             &mut self.fg_texture.storage,
             &mut self.bg_texture.storage,
             &mut self.chars_texture.storage,
+        )
+    }
+
+    pub(crate) fn calculate_new_size(&self, new_size: (u32, u32)) -> (u32, u32) {
+        let delta = (
+            (new_size.0 as i32 - self.base_size.0 as i32) as f32,
+            (new_size.1 as i32 - self.base_size.1 as i32) as f32,
+        );
+
+        let delta_cells = (
+            (delta.0 / self.snap_size.0 as f32).round() as i32,
+            (delta.1 / self.snap_size.1 as f32).round() as i32,
+        );
+
+        let new_size = (
+            self.base_size.0 as i32 + (delta_cells.0 * self.snap_size.0 as i32),
+            self.base_size.1 as i32 + (delta_cells.1 * self.snap_size.1 as i32),
+        );
+
+        (
+            if new_size.0 < 0 {
+                MIN_WINDOW_SIZE.0 * self.font_char_size.0
+            } else {
+                new_size.0 as u32
+            },
+            if new_size.1 < 0 {
+                MIN_WINDOW_SIZE.1 * self.font_char_size.1
+            } else {
+                new_size.1 as u32
+            },
         )
     }
 }
