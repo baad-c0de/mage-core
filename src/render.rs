@@ -7,15 +7,15 @@ use wgpu::{
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
     BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Features, FragmentState,
-    FrontFace, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor, Limits, LoadOp,
-    MemoryHints, MultisampleState, Operations, Origin3d, PipelineCompilationOptions,
-    PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology,
-    Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, StoreOp, Surface,
-    SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
-    VertexState,
+    CommandEncoderDescriptor, CompositeAlphaMode, Device, DeviceDescriptor, Extent3d, Features,
+    FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor,
+    Limits, LoadOp, MemoryHints, MultisampleState, Operations, Origin3d,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
+    PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
+    ShaderStages, StoreOp, Surface, SurfaceConfiguration, SurfaceError, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
+    TextureViewDescriptor, TextureViewDimension, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -112,9 +112,16 @@ impl<'a> RenderState<'a> {
             .copied()
             .find(|format| !format.is_srgb())
             .expect("Could not find the surface format");
-        let surface_config = surface_expected
-            .get_default_config(&adapter, window_size.width, window_size.height)
-            .expect("Couldn't get a surface config with adapter");
+        let surface_config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: window_size.width,
+            height: window_size.height,
+            present_mode: PresentMode::AutoNoVsync,
+            desired_maximum_frame_latency: 2,
+            alpha_mode: CompositeAlphaMode::Auto,
+            view_formats: vec![],
+        };
         surface_expected.configure(&device, &surface_config);
 
         let font_size = (16 * font.char_width, 16 * font.char_height);

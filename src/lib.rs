@@ -76,7 +76,7 @@ where
         ))
         .build(&event_loop)?;
 
-    let mut render_state = RenderState::new(window, font_data).await?;
+    let mut render_state = RenderState::new(&window, font_data).await?;
     let mut shift_state = ShiftState::new();
 
     let mut current_time = Local::now();
