@@ -72,11 +72,13 @@ impl RenderState {
         let window_size = window.inner_size();
 
         let instance = Instance::new(InstanceDescriptor {
-            backends: Backends::all(),
+            backends: Backends::PRIMARY(),
             ..Default::default()
         });
 
-        let surface = unsafe { instance.create_surface(&window) }?;
+        // Unsafe function no longer needed
+        //
+        let surface = instance.create_surface(&window);
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
