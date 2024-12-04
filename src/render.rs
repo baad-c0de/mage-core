@@ -7,9 +7,10 @@ use wgpu::{
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
     BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Features, FragmentState,
-    FrontFace, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor, Limits, LoadOp,
-    MultisampleState, Operations, Origin3d, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
+    CommandEncoderDescriptor, CompositeAlphaMode, Device, DeviceDescriptor, Extent3d, Features,
+    FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, Instance, InstanceDescriptor,
+    Limits, LoadOp, MemoryHints, MultisampleState, Operations, Origin3d,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
     PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
     ShaderStages, StoreOp, Surface, SurfaceConfiguration, SurfaceError, TextureAspect,
@@ -20,9 +21,9 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{error::MageError, FontData};
 
-pub(crate) struct RenderState {
+pub(crate) struct RenderState<'a> {
     /// The surface that we'll render to.
-    surface: Surface,
+    surface: Surface<'a>,
 
     /// Various configuration options for the surface.
     surface_config: SurfaceConfiguration,
@@ -37,7 +38,8 @@ pub(crate) struct RenderState {
     render_pipeline: RenderPipeline,
 
     /// The window that we'll draw to.
-    pub(crate) window: Window,
+    // Added lifetime and made it a reference because God (the compiler) said so
+    pub(crate) window: &'a Window,
 
     /// The texture that contains the foreground color data.
     fg_texture: Texture,
@@ -67,22 +69,24 @@ pub(crate) struct RenderState {
     surface_char_size: (u32, u32),
 }
 
-impl RenderState {
-    pub(crate) async fn new(window: Window, font: FontData) -> Result<Self, MageError> {
+impl<'a> RenderState<'a> {
+    pub(crate) async fn new(window: &'a Window, font: FontData) -> Result<Self, MageError> {
         let window_size = window.inner_size();
 
         let instance = Instance::new(InstanceDescriptor {
-            backends: Backends::all(),
+            backends: Backends::PRIMARY,
             ..Default::default()
         });
 
-        let surface = unsafe { instance.create_surface(&window) }?;
+        // Unsafe function no longer needed
+
+        let surface = instance.create_surface(window).ok();
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
                 power_preference: PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
+                compatible_surface: surface.as_ref(),
             })
             .await
             .ok_or(MageError::BadAdapter)?;
@@ -91,31 +95,34 @@ impl RenderState {
             .request_device(
                 &DeviceDescriptor {
                     label: Some("Main device"),
-                    features: Features::empty(),
-                    limits: Limits::default(),
+                    // Breaking change means that you have to say "required" limits and features
+                    required_features: Features::empty(),
+                    required_limits: Limits::default(),
+                    memory_hints: MemoryHints::Performance,
                 },
                 None,
             )
             .await?;
 
-        let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps
+        let surface_expected = surface.expect("No surface Found");
+        let surface_format = surface_expected
+            .get_capabilities(&adapter)
             .formats
             .iter()
             .copied()
             .find(|format| !format.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
+            .expect("Could not find the surface format");
         let surface_config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width: window_size.width,
             height: window_size.height,
-            // present_mode: surface_caps.present_modes[0],
             present_mode: PresentMode::AutoNoVsync,
-            alpha_mode: surface_caps.alpha_modes[0],
+            desired_maximum_frame_latency: 2,
+            alpha_mode: CompositeAlphaMode::Auto,
             view_formats: vec![],
         };
-        surface.configure(&device, &surface_config);
+        surface_expected.configure(&device, &surface_config);
 
         let font_size = (16 * font.char_width, 16 * font.char_height);
         let surface_size = (
@@ -237,6 +244,9 @@ impl RenderState {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[],
+                compilation_options: PipelineCompilationOptions {
+                    ..Default::default()
+                },
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -246,6 +256,9 @@ impl RenderState {
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 })],
+                compilation_options: PipelineCompilationOptions {
+                    ..Default::default()
+                },
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleStrip,
@@ -263,10 +276,11 @@ impl RenderState {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
+            cache: None,
         });
 
         Ok(Self {
-            surface,
+            surface: surface_expected,
             surface_config,
             device,
             queue,

@@ -29,9 +29,6 @@ use crate::input::ShiftState;
 pub use app::*;
 pub use colour::*;
 pub use config::*;
-pub use error::*;
-pub use input::*;
-pub use present::*;
 
 pub async fn run<A>(mut app: A, config: Config) -> Result<(), MageError>
 where
@@ -79,7 +76,7 @@ where
         ))
         .build(&event_loop)?;
 
-    let mut render_state = RenderState::new(window, font_data).await?;
+    let mut render_state = RenderState::new(&window, font_data).await?;
     let mut shift_state = ShiftState::new();
 
     let mut current_time = Local::now();
